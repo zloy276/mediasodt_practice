@@ -2,3 +2,4 @@ config.py
 .idea
 venv/
 mydb.db
+test.py

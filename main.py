@@ -29,9 +29,9 @@ class BotHandler:
             for user in users:
                 self.send_weather_info(user[1], int(user[0]))
 
-    def change_notes(self, id, city):
+    def change_notes(self, id, pref_city, new_city):
         cursor = self.db.cursor()
-        cursor.execute("UPDATE albums SET city = '{}' WHERE id = '{}'".format(id, city))
+        cursor.execute("UPDATE notes SET city = '{}' WHERE id = '{}' AND city = '{}'".format(new_city, id, pref_city))
         self.db.commit()
 
     def add_notes(self, id, city):
@@ -39,7 +39,17 @@ class BotHandler:
         cursor.execute("INSERT INTO notes VALUES ('{}','{}','{}')".format(id, city, datetime.now().strftime('%x')))
         self.db.commit()
 
-    def rem_notes(self, id):
+    def rem_notes(self, id, city):
+        cursor = self.db.cursor()
+        cursor.execute("DELETE FROM notes WHERE id = '{}' AND city = '{}'".format(id, city))
+        self.db.commit()
+
+    def check_note(self, id, city):
+        cursor = self.db.cursor()
+        cursor.execute("SELECT * FROM notes WHERE id = '{}' AND city = '{}'".format(id, city))
+        return len(cursor.fetchall()) != 0
+
+    def rem_all_notes(self, id):
         cursor = self.db.cursor()
         cursor.execute("DELETE FROM notes WHERE id = '{}'".format(id))
         self.db.commit()
@@ -65,23 +75,32 @@ class BotHandler:
         return last_update
 
     def send_command_ans(self, text, city, id):
+        c_city = city.split('_')
         if text == '/help':
             self._send_message(id, 'Если вы введете название какого-то либо города, '
                                    'бот выведет погоду в этом городе на сегодня.\n'
                                    'Команды:\n'
                                    '/add <название города> - добавить уведомление(каждый день в 6 утра по Ульяновскому '
                                    'времени  бот будет отсыласть уведомление о погоде в данном городе);\n'
-                                   '/change <название города> - изменить название города для уведомлений\n'
-                                   '/remove - отменить рассылку уведомлений')
+                                   '/change <название города который вы хотите изменить>_<название нового города> - '
+                                   'изменить название города для уведомлений\n'
+                                   '/remove <название города>- отменить рассылку уведомлений, если не вводить город, '
+                                   'удалятся все уведомления')
         elif text == '/add' and Weather().check(city):
             self.add_notes(id, city)
             self._send_message(id, 'Каждое утро вам будет рассылаться уведомление о городе {}'.format(city))
-        elif text == '/change' and Weather().check(city):
-            self.change_notes(id, city)
-            self._send_message(id, 'Город для рассылку уведомлений был изменен на {}'.format(city))
+        elif text == '/change' and len(c_city) == 2 and weather_bot.check_note(id, c_city[0]) and Weather().check(c_city[1]):
+            self.change_notes(id, c_city[0], c_city[1])
+            self._send_message(id, 'Город для рассылку уведомлений был изменен c {} на {}'.format(c_city[0], c_city[1]))
         elif text == '/remove' and text == city:
-            self.rem_notes(id)
-            self._send_message(id, 'Рассылка уведомлений была отключена')
+            self.rem_all_notes(id)
+            self._send_message(id, 'Рассылка всех уведомлений была отключена')
+        elif text == '/remove' and Weather().check(c_city):
+            if self.check_note(id, city):
+                self.rem_notes(id, city)
+                self._send_message(id, 'Рассылка уведомлений о городе {} была отключена'.format(city))
+            else:
+                self._send_message(id, 'Мы не нашли {} в списке ваших уведомлений'.format(city))
         else:
             self._send_message(id, 'Что пошло не так. Для получения информации о боте напишите /help')
 
@@ -135,7 +154,7 @@ def main():
         last_chat_text = last_update['message']['text']
         words_in_text = last_chat_text.split(' ', 1)
         if commands.count(words_in_text[0]) > 0:
-            weather_bot.send_command_ans(words_in_text[0], words_in_text[-1], last_chat_id)
+            weather_bot.send_command_ans(words_in_text[0], words_in_text[-1].lower(), last_chat_id)
         else:
             weather_bot.send_weather_info(last_chat_text, last_chat_id)
         new_offset = last_update_id + 1

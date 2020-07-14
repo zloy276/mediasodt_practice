@@ -54,7 +54,7 @@ class BotHandler:
         cursor.execute("DELETE FROM notes WHERE id = '{}'".format(id))
         self.db.commit()
 
-    def get_updates(self, offset=None, timeout=30):
+    def get_updates(self, offset=None, timeout=1):
         method = 'getUpdates'
         resp = requests.get(self.api_url + method, params={'timeout': timeout, 'offset': offset})
         result_json = resp.json()['result']
@@ -164,5 +164,5 @@ if __name__ == '__main__':
     while True:
         try:
             main()
-        finally:
+        except IndexError:
             continue

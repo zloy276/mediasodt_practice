@@ -190,6 +190,7 @@ class BotHandler:
         else:
             self.send_message(id, 'Что-то пошло не так, попробуйте еще раз.')
 
+
 class WeatherHandler:
     urls = "http://api.openweathermap.org/data/2.5/find"
     api = w_api

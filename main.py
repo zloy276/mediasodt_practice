@@ -106,19 +106,20 @@ class BotHandler:
 
     def send_weather_info(self, text, id):
         weather = Weather().get_weather(text)
-        if weather['cod'] == 400 or len(weather['list']) == 0:
-            self._send_message(id, 'Мы не знаем такого города)')
-        else:
+        if Weather().check(text):
             self._send_message(id, 'температура в городе {} варируется от  {} до {} '
                                .format(weather['list'][0]['name'], round(weather['list'][0]['main']['temp_max']),
                                        round(weather['list'][0]['main']['temp_min'])))
+        else:
+            self._send_message(id, 'Мы не знаем такого города)')
+
 
 
 class Weather:
 
     def check(self, city):
         data = self.get_weather(city)
-        return not (data['cod'] == 400 or len(data['list']) == 0)
+        return data['cod'] != 400 and 'list' in data
 
     def get_weather(self, city):
         url = "http://api.openweathermap.org/data/2.5/find"

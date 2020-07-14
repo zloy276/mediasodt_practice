@@ -6,6 +6,7 @@ from config import t_api, w_api, commands
 import schedule
 import time
 
+
 class BotHandler:
 
     def __init__(self, token):

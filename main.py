@@ -141,7 +141,8 @@ def main():
 
 
 if __name__ == '__main__':
-    weather_bot = BotHandler(t_api)
+    token = t_api
+    weather_bot = BotHandler(token)
     x = threading.Thread(target=Looper().looper, daemon=True, )
     x.start()
     while True:

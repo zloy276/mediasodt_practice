@@ -117,7 +117,7 @@ class Weather:
 class Looper:
 
     def looper(self):
-        schedule.every().day.at('08:00').do(weather_bot.send_notes, )
+        schedule.every().day.at('06:00').do(weather_bot.send_notes, )
 
         while True:
             schedule.run_pending()

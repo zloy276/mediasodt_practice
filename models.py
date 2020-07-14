@@ -1,10 +1,7 @@
 import requests
-import threading
 from datetime import datetime
 import sqlite3
 from config import t_api, w_api
-import schedule
-import time
 
 
 class DataBase:

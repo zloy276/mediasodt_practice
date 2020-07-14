@@ -117,11 +117,7 @@ class BotHandler:
 class Weather:
 
     def check(self, city):
-        url = "http://api.openweathermap.org/data/2.5/find"
-        api = w_api
-        res = requests.get(url, params={'q': city, 'type': 'like',
-                                        'units': 'metric', 'lang': 'ru', 'APPID': api})
-        data = res.json()
+        data = self.get_weather(city)
         return not (data['cod'] == 400 or len(data['list']) == 0)
 
     def get_weather(self, city):

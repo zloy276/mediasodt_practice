@@ -12,10 +12,10 @@ class DataBase:
     def check_db(self):
         cursor = self.db.cursor()
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='notes'")
-        if cursor.fetchall() == []:
+        if not cursor.fetchall():
             cursor.execute("CREATE TABLE notes ('id', 'city', 'date')")
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='chats'")
-        if cursor.fetchall() == []:
+        if not cursor.fetchall():
             cursor.execute("CREATE TABLE chats ('id', 'mode')")
         cursor.close()
 
@@ -29,7 +29,7 @@ class DataBase:
     def add_notes(self, id, city):
         cursor = self.db.cursor()
         cursor.execute("SELECT * FROM notes WHERE id = '{}' AND city = '{}'".format(id, city.capitalize()))
-        if cursor.fetchall() == []:
+        if not cursor.fetchall():
             cursor.execute("INSERT INTO notes VALUES ('{}','{}','{}')".format(id, city.capitalize(),
                                                                               datetime.now().strftime('%x')))
             self.db.commit()
@@ -64,6 +64,29 @@ class DataBase:
         cursor.close()
         return res
 
+    def get_chat_mode(self, id):
+        cursor = self.db.cursor()
+        cursor.execute("SELECT * FROM chats WHERE id = '{}'".format(id))
+        if cursor.fetchall():
+            res = cursor.execute("SELECT * FROM chats WHERE id = '{}'".format(id)).fetchall()[0][1]
+        else:
+            cursor.execute("INSERT INTO chats VALUES ('{}', '{}')".format(id, 'wheather'))
+            self.db.commit()
+            res = 'wheather'
+        cursor.close()
+        return res
+
+    def change_mode(self, id, mode):
+        cursor = self.db.cursor()
+        cursor.execute("SELECT * FROM chats WHERE id = '{}'".format(id, mode))
+        if not cursor.fetchall():
+            cursor.execute("INSERT INTO chats VALUES ('{}', '{}')".format(id, mode))
+            self.db.commit()
+        else:
+            cursor.execute("UPDATE chats SET mode = '{}' WHERE id = '{}'".format(mode, id))
+            self.db.commit()
+        cursor.close()
+
 
 class BotHandler:
 
@@ -93,15 +116,20 @@ class BotHandler:
         if text is not None:
             cities = text.split('_')
         if command == '/help' and text is None:
-            self.send_message(id, 'Если вы введете название какого-то либо города, '
-                                  'бот выведет погоду в этом городе на сегодня.\n'
+            self.send_message(id, 'Бот работает в нескольких режимах:\n'
+                                  '/wheather- устанавливает режим погоды. Любое сообщение которое будет отправлено боту'
+                                  '(не считая команд) будет считаться за название города и бот выведет погоду в '
+                                  'этом городе на сегодня;\n'
+                                  '/translate- устанавливает режим переводчика любое сообщение будет которое вы '
+                                  'отправите боту будет переведено и отправленно вам\n.'
                                   'Команды:\n'
                                   '/add <название города> - добавить уведомление(каждый день в 6 утра по Ульяновскому '
                                   'времени  бот будет отсыласть уведомление о погоде в данном городе);\n'
                                   '/change <название города который вы хотите изменить>_<название нового города> - '
                                   'изменить название города для уведомлений\n'
                                   '/remove <название города>- отменить рассылку уведомлений, если не вводить город, '
-                                  'удалятся все уведомления')
+                                  'удалятся все уведомления.\n')
+
         elif command == '/add' and WeatherHandler().check(text):
             if self.db.add_notes(id, text):
                 self.send_message(id, 'Каждое утро вам будет рассылаться уведомление о городе {}'.
@@ -121,10 +149,38 @@ class BotHandler:
                 self.send_message(id, 'Рассылка уведомлений о городе {} была отключена'.format(text.capitalize()))
             else:
                 self.send_message(id, 'Мы не нашли {} в списке ваших уведомлений'.format(text.capitalize()))
+        elif command == '/start' and text is None:
+            self.send_message(id, 'Здравствуйте, это мой небольшой бот, который пока что умеет информировать о '
+                                  'состоянии погоды в любом городе и рассылать ежедневные прогнозы. В разработке '
+                                  'находится возможность перевода текста. Для получения '
+                                  'большей информации напишите /help.')
+        elif command == '/wheather' and text is None:
+            self.db.change_mode(id, 'wheather')
+            self.send_message(id, 'Установлен режим погоды')
+        elif command == '/translate' and text is None:
+            self.db.change_mode(id, 'translate')
+            self.send_message(id, 'Установлен режим перевода')
         else:
             self.send_message(id, 'Что пошло не так. Для получения информации о боте напишите /help')
 
     def send_info(self, id, text):
+        mode = self.db.get_chat_mode(id)
+        if mode == 'wheather':
+            self.send_info_wheather(id, text)
+        elif mode == 'translate':
+            self.send_info_translate(id, text)
+        else:
+            self.db.change_mode(id, 'wheather')
+            self.send_message(id, 'Простите,у нас произошла какая-то ошибка и ваш режим будет автоматически изменен '
+                                  'на режим погоды')
+
+    def send_info_translate(self, id, text):
+        self.send_message(id, 'К сожалению этот функционал пока что не реализован, потому что я не смог найти API '
+                              'для переводчика(у Google- платный, а яндекс приостановил выдачу бесплатных). Этим я '
+                              'хотел показать возможность смены режимов и ведения беседы с каждым человеком, '
+                              'фиксируя данные о даилоге с каждым бользователем в базе данныхю')
+
+    def send_info_wheather(self, id, text):
         if WeatherHandler().check(text):
             weather = WeatherHandler().get_weather(text)
             self.send_message(id, 'В городе {} сегодня ожидается'
@@ -133,7 +189,6 @@ class BotHandler:
                                                                     round(weather['list'][0]['main']['temp_max'])))
         else:
             self.send_message(id, 'Что-то пошло не так, попробуйте еще раз.')
-
 
 class WeatherHandler:
     urls = "http://api.openweathermap.org/data/2.5/find"
@@ -146,8 +201,11 @@ class WeatherHandler:
         return True
 
     def check(self, city):
+        count = 0
         data = self.get_weather(city)
-        return data['cod'] != '400' and 'list' in data
+        if 'count' in data:
+            count = data['count']
+        return count > 0
 
     def get_weather(self, city):
         res = requests.get(self.urls, params={'q': city, 'type': 'like',

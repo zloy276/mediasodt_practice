@@ -17,7 +17,7 @@ def looper():
 def main():
     x = threading.Thread(target=looper, daemon=True, )
     x.start()
-    commands = ['/help', '/add', '/change', '/remove', ]
+    commands = ['/help', '/add', '/change', '/remove', '/wheather', '/translate', '/start', ]
     new_offset = None
     db = models.DataBase('mydb.db')
     weather_bot = models.BotHandler(t_api, db)

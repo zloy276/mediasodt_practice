@@ -4,7 +4,7 @@ import sqlite3
 from config import t_api, w_api
 
 
-class DataBase:
+class DataBase:    #надо довести до ума работу с бд
     def __init__(self, name):
         self.db = sqlite3.connect(name, check_same_thread=False)
         self.check_db()

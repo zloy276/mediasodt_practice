@@ -38,9 +38,12 @@ class DataBase:    #надо довести до ума работу с бд
         cursor.close()
         return False
 
-    def rem_notes(self, id, city):
+    def rem_notes(self, table, id, city=None):
         cursor = self.db.cursor()
-        cursor.execute("DELETE FROM notes WHERE id = '{}' AND city = '{}'".format(id, city.capitalize()))
+        if city is None:
+            cursor.execute("DELETE FROM notes WHERE id = '{}'".format(id))
+        else:
+            cursor.execute("DELETE FROM {} WHERE id = '{}' AND city = '{}'".format(table, id, city.capitalize()))
         self.db.commit()
         cursor.close()
 
@@ -50,12 +53,6 @@ class DataBase:    #надо довести до ума работу с бд
         res = len(cursor.fetchall()) != 0
         cursor.close()
         return res
-
-    def rem_all_notes(self, id):
-        cursor = self.db.cursor()
-        cursor.execute("DELETE FROM notes WHERE id = '{}'".format(id))
-        self.db.commit()
-        cursor.close()
 
     def get_info(self, ):
         cursor = self.db.cursor()
@@ -141,11 +138,11 @@ class BotHandler:
             self.send_message(id, 'Город для рассылку уведомлений был изменен c {} на {}'
                               .format(cities[0].capitalize(), cities[1].capitalize()))
         elif command == '/remove' and text is None:
-            self.db.rem_all_notes(id)
+            self.db.rem_notes('notes', id)
             self.send_message(id, 'Рассылка всех уведомлений была отключена')
-        elif text == '/remove' and WeatherHandler().check(text):
+        elif command == '/remove':
             if self.db.check_note(id, text):
-                self.db.rem_notes(id, text)
+                self.db.rem_notes('notes', id, text)
                 self.send_message(id, 'Рассылка уведомлений о городе {} была отключена'.format(text.capitalize()))
             else:
                 self.send_message(id, 'Мы не нашли {} в списке ваших уведомлений'.format(text.capitalize()))

@@ -7,8 +7,8 @@ import models
 
 def looper():
     db = models.DataBase('mydb.db')
-    #schedule.every().day.at('06:00').do(models.BotHandler(t_api, db).send_notes, )#итоговое
-    schedule.every(5).seconds.do(models.BotHandler(t_api, db).send_notes, )# для тестировок
+    schedule.every().day.at('06:00').do(models.BotHandler(t_api, db).send_notes, )#итоговое
+    #schedule.every(5).seconds.do(models.BotHandler(t_api, db).send_notes, )# для тестировок
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -17,7 +17,8 @@ def looper():
 def main():
     x = threading.Thread(target=looper, daemon=True, )
     x.start()
-    commands = ['/help', '/add', '/change', '/remove', '/wheather', '/translate', '/start', ]
+    commands = ['/help', '/add', '/change', '/remove', '/start', ]
+    modes = ['/weather', '/translate']
     new_offset = None
     db = models.DataBase('mydb.db')
     weather_bot = models.BotHandler(t_api, db)
@@ -30,13 +31,14 @@ def main():
                 new_offset = message['update_id'] + 1
                 message_text = message['message']['text']
                 words_in_message = message_text.split(' ', 1)
-                if words_in_message[0] in commands and len(words_in_message) == 2:
-                    command = words_in_message[0]
-                    attr = words_in_message[1]
-                    weather_bot.commands(message_id, command, attr)
-                elif words_in_message[0] in commands and len(words_in_message) == 1:
-                    command = words_in_message[0]
-                    weather_bot.commands(message_id, command)
+                command = words_in_message[0]
+                com_attr = None
+                if len(words_in_message)>1:
+                    com_attr = words_in_message[1]
+                if command in commands:
+                    weather_bot.commands(message_id, command, com_attr)
+                elif command in modes and com_attr is None:
+                    weather_bot.change_mode(message_id, command)
                 else:
                     weather_bot.send_info(message_id, message_text.capitalize())
         else:
